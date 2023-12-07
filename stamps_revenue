@@ -1,0 +1,35 @@
+select
+    'https://warehouse.info.com/order/'||o.reference,
+    li.price,
+    case
+        when o.currency = 'BRL' then sum(li.price::numeric) / {{euro}}
+        else sum(li.actual_item_price::numeric)
+    end as price_euro
+    --, exchanged_details -> 'actual_price'
+    --, exchanged_details -> 'actual_currency'
+from
+    orders o
+    left join line_items li on o.id = li.order_id
+    left join materials m on li.material_id = m.id
+    left join material_categories mc on m.material_category_id = mc.id
+    left join consolidated_prices cp on m.id = cp.material_id
+    cross join lateral jsonb_array_elements(o.abridged_line_items) as item
+where
+    o.delivery_service in ('novo_servico', 'outro_servico')
+    and {{periodo}}
+    and o.aasm_state not in ('canceled', 'removed')
+    --and mc.id = 101
+    --and item->>'material_category' ilike '%bottle%'
+    and (item->> 'sku' ilike '%stamp_1%'
+        or item->> 'sku' ilike '%stamp_2%')
+    --and (item->> 'stamp' ilike '%stamp_1%'
+    -- or item->> 'stamp' ilike '%stamp_2%')
+    and o.reference = '12345678'
+    and value->>'material_composition' ilike '%true%'
+    --and composition = true
+    --and new_slug ilike '%case%'
+    and li.price::numeric > 0
+group by
+    1, 2, o.currency, o.exchanged_details
+order by
+    o.reference asc;
