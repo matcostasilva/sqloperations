@@ -1,0 +1,53 @@
+SELECT
+    month,
+    iphone_13, magsafe_iphone_13, ROUND((magsafe_iphone_13::numeric/iphone_13::numeric)*100, 2)||'%' AS "%magsafe_iphone_13",
+    iphone_13_pro, magsafe_iphone_13_pro, ROUND((magsafe_iphone_13_pro::numeric/iphone_13_pro::numeric)*100, 2)||'%' AS "%magsafe_iphone_13_pro",
+    iphone_13_pro_max, magsafe_iphone_13_pro_max, ROUND((magsafe_iphone_13_pro_max::numeric/iphone_13_pro_max::numeric)*100, 2)||'%' AS "%magsafe_iphone_13_pro_max",
+    iphone_14, magsafe_iphone_14, ROUND((magsafe_iphone_14::numeric/iphone_14::numeric)*100, 2)||'%' AS "%magsafe_iphone_14",
+    iphone_14_pro, magsafe_iphone_14_pro, ROUND((magsafe_iphone_14_pro::numeric/iphone_14_pro::numeric)*100, 2)||'%' AS "%magsafe_iphone_14_pro",
+    iphone_14_pro_max, magsafe_iphone_14_pro_max, ROUND((magsafe_iphone_14_pro_max::numeric/iphone_14_pro_max::numeric)*100, 2)||'%' AS "%magsafe_iphone_14_pro_max"
+FROM (
+    SELECT
+        CASE 
+            WHEN DATE_TRUNC('month', o.created_date) = '2023-06-01' THEN '6. june'
+            WHEN DATE_TRUNC('month', o.created_date) = '2023-07-01' THEN '7. july'
+            WHEN DATE_TRUNC('month', o.created_date) = '2023-08-01' THEN '8. august'
+            WHEN DATE_TRUNC('month', o.created_date) = '2023-09-01' THEN '9. september'
+            WHEN DATE_TRUNC('month', o.created_date) = '2023-10-01' THEN '10. october'
+            WHEN DATE_TRUNC('month', o.created_date) = '2023-11-01' THEN '11. november'
+        END AS month,
+        
+        COUNT(*) FILTER (WHERE m.indentity = 'iphone_13') AS iphone_13,
+        COUNT(*) FILTER (WHERE m.codemat ILIKE '%magsafe-iphone_13') AS magsafe_iphone_13,
+        
+        COUNT(*) FILTER (WHERE m.indentity = 'iphone_13_pro') AS iphone_13_pro,
+        COUNT(*) FILTER (WHERE m.codemat ILIKE '%magsafe-iphone_13_pro') AS magsafe_iphone_13_pro,
+        
+        COUNT(*) FILTER (WHERE m.identifier = 'iphone_13_pro_max') AS iphone_13_pro_max,
+        COUNT(*) FILTER (WHERE m.codemat ILIKE '%magsafe-iphone_13_pro_max') AS magsafe_iphone_13_pro_max,
+        
+        COUNT(*) FILTER (WHERE m.identifier = 'iphone_14') AS iphone_14,
+        COUNT(*) FILTER (WHERE m.codemat ILIKE '%magsafe-iphone_14') AS magsafe_iphone_14,
+        
+        COUNT(*) FILTER (WHERE m.identifier = 'iphone_14_pro') AS iphone_14_pro,
+        COUNT(*) FILTER (WHERE m.codemat ILIKE '%magsafe-iphone_14_pro') AS magsafe_iphone_14_pro,
+        
+        COUNT(*) FILTER (WHERE m.identifier = 'iphone_14_pro_max') AS iphone_14_pro_max,
+        COUNT(*) FILTER (WHERE m.codemat ILIKE '%magsafe-iphone_14_pro_max') AS magsafe_iphone_14_pro_max
+    FROM 
+        ordersbase o
+        LEFT JOIN items_by_line li ON li.ordersbase_id = o.id
+        LEFT JOIN material_table m ON li.material_object_id = m.id
+    WHERE
+        (m.mat_name ILIKE '%iphone 13'
+        OR m.mat_name ILIKE '%iphone 13 pro'
+        OR m.mat_name ILIKE '%iphone 13 pro max'
+        OR m.mat_name ILIKE '%iphone 14'
+        OR m.mat_name ILIKE '%iphone 14 pro'
+        OR m.mat_name ILIKE '%iphone 14 pro max')
+        AND delivery_address -> 'country' ILIKE '%united states%'
+        AND o.created_date >= NOW() - INTERVAL '5 months'
+        AND o.status_order NOT IN ('canceled', 'removed')
+    GROUP BY DATE_TRUNC('month', o.created_date)
+    ORDER BY DATE_TRUNC('month', o.created_date) ASC
+) sub;
